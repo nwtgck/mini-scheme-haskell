@@ -9,9 +9,11 @@ module Scheme(
   int,
   real,
   str,
+  sym,
   t,
   f,
-  nil
+  nil,
+  quote
 ) where
 
 import           Control.Monad.State
@@ -339,6 +341,9 @@ test3_eval = do
         (sym "display" :. (sym "cons" :. sym "a" :. sym "b" :. nil) :. nil):
         []
 
+
+  mapM print program
+
   -- programの実行
   let res = runStateT (forM program eval) (M.empty, "")
   case res of
@@ -380,4 +385,4 @@ test5_pair = do
   -- print $ runStateT (eval s4) (M.empty, "")
 
 main :: IO ()
-main = test5_pair
+main = test3_eval
