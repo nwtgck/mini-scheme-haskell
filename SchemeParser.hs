@@ -1,3 +1,7 @@
+module SchemeParser(
+  miniScheme
+) where
+
 import           Control.Monad.State
 import           Data.Char
 import qualified Data.Map            as M
