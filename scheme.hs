@@ -1,6 +1,19 @@
 -- コンパクトなSchemeのインタプリタを作る試み
 -- ここを参考にしているhttp://www.geocities.jp/m_hiroi/func/haskell34.html
 
+module Scheme(
+  Number(..),
+  Atom(..),
+  SExp(..),
+  eval,
+  int,
+  real,
+  str,
+  t,
+  f,
+  nil
+) where
+
 import           Control.Monad.State
 import qualified Data.Map            as M
 import           Text.Printf
