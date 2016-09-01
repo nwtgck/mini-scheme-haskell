@@ -57,7 +57,7 @@ instance Show Number where
 instance Show Atom where
   show(NUM n)  = show n
   show(SYM s)  = s
-  show(STR s)  = s
+  show(STR s)  = show s
   show (Lam ps content) = "(lambda " ++ show ps ++ " " ++ show content ++ ")"
   show T       = "t"
   show F       = "f"
@@ -160,7 +160,10 @@ eval(Atm (SYM "if") :. cond :. t :. f :. Atm NIL) = do
 eval(Atm (SYM "display") :. ex :. Atm NIL) = do
   c <- eval ex
   (env, stdout) <- get
-  put (env, stdout ++ show c)
+  let st = case c of
+            Atm (STR s) -> s
+            _           -> show c
+  put (env, stdout ++ st)
   return $ Atm UNDEF
 
 -- lambda
