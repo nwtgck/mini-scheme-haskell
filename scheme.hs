@@ -17,6 +17,7 @@ module Scheme(
 ) where
 
 import           Control.Monad.State
+import qualified Data.DList          as D
 import qualified Data.Map            as M
 import           Debug.Trace
 import           Text.Printf
@@ -105,7 +106,7 @@ str = Atm . STR
 type Env = M.Map String [SExp]
 
 -- Schemにおける出力先
-type Stdout = String
+type Stdout = D.DList Char
 
 
 eval :: SExp -> StateT (Env, Stdout) (Either String) SExp
@@ -140,6 +141,13 @@ eval (op@(Atm (SYM "*")) :. x :. xs) = do
   Atm (NUM b) <- eval(op :. xs)
   return (Atm . NUM $ a * b)
 
+-- -
+eval (op@(Atm (SYM "-")) :. Atm NIL) = return (int 0)
+eval (op@(Atm (SYM "-")) :. x :. xs) = do
+  Atm (NUM a) <- eval x
+  Atm (NUM b) <- eval(op :. xs)
+  return (Atm . NUM $ a - b)
+
 -- list -- リストを作る
 eval ((Atm (SYM "list")) :. Atm NIL) = return nil
 eval (op@(Atm (SYM "list")) :. x :. xs) = do
@@ -155,9 +163,10 @@ eval(Atm (SYM "define") :. xsym@(Atm (SYM xname)) :. xs :. Atm NIL) = StateT (\e
       _                 -> s
   )
 -- if
-eval(Atm (SYM "if") :. cond :. t :. f :. Atm NIL) = do
+eval(Atm (SYM "if") :. cond :. te :. fe :. Atm NIL) = do
   c <- eval cond
-  return $ if c == Atm T then t else f
+  if c == Atm T then eval te else eval fe
+
 -- display
 eval(Atm (SYM "display") :. ex :. Atm NIL) = do
   c <- eval ex
@@ -165,7 +174,7 @@ eval(Atm (SYM "display") :. ex :. Atm NIL) = do
   let st = case c of
             Atm (STR s) -> s
             _           -> show c
-  put (env, stdout ++ st)
+  put (env, stdout `mappend` D.fromList st)
   return $ Atm UNDEF
 
 -- lambda
@@ -218,6 +227,7 @@ eval(Atm (SYM "null?") :. xs :. nil) = do
 
 -- 適用する（プリミティブな関数以外はここで適用される）
 eval(sym@(Atm (SYM lname)) :. args) = do
+  (env, _) <- get
   (Atm (Lam params content)) <- eval sym -- TODO ラムダでない時にエラーをだすべき
   -- 引数に値をいれる
   pushParamsEnv params args
@@ -288,18 +298,18 @@ test2_eval = do
     s12 = (sym "list" :. int 1 :. int 2 :. int 3 :. nil)
 
 
-  print $ runStateT (eval s1) (M.empty, "")
-  print $ runStateT (eval s2) (M.empty, "")
-  print $ runStateT (eval s3) (M.empty, "")
-  print $ runStateT (eval s4) (M.empty, "")
-  print $ runStateT (eval s5) (M.empty, "")
-  print $ runStateT (eval s6) (M.empty, "")
-  print $ runStateT (eval s7) (M.empty, "")
-  print $ runStateT (eval s8) (M.empty, "")
-  print $ runStateT (eval s9) (M.empty, "") -- これは失敗すべき
-  print $ runStateT (eval s10) (M.empty, "")
-  print $ runStateT (eval s11) (M.empty, "")
-  print $ runStateT (eval s12) (M.empty, "")
+  print $ runStateT (eval s1) (M.empty, D.fromList "")
+  print $ runStateT (eval s2) (M.empty, D.fromList "")
+  print $ runStateT (eval s3) (M.empty, D.fromList "")
+  print $ runStateT (eval s4) (M.empty, D.fromList "")
+  print $ runStateT (eval s5) (M.empty, D.fromList "")
+  print $ runStateT (eval s6) (M.empty, D.fromList "")
+  print $ runStateT (eval s7) (M.empty, D.fromList "")
+  print $ runStateT (eval s8) (M.empty, D.fromList "")
+  print $ runStateT (eval s9) (M.empty, D.fromList "") -- これは失敗すべき
+  print $ runStateT (eval s10) (M.empty, D.fromList "")
+  print $ runStateT (eval s11) (M.empty, D.fromList "")
+  print $ runStateT (eval s12) (M.empty, D.fromList "")
 
 
 
@@ -354,12 +364,12 @@ test3_eval = do
   mapM print program
 
   -- programの実行
-  let res = runStateT (forM program eval) (M.empty, "")
+  let res = runStateT (forM program eval) (M.empty, D.fromList "")
   case res of
     Right (evaledExps, (env, stdout)) -> do
       printf "Evaled Exps: %s\n" (show evaledExps)
       printf "Env: %s\n" (show env)
-      printf "Stdout: \n%s\n" stdout
+      printf "Stdout: \n%s\n" (D.toList stdout)
     Left cause                       -> do
       putStrLn ("failed: " ++ cause)
   return ()
@@ -376,10 +386,10 @@ test4_null = do
     -- (null? 'a)
     s4 = sym "null?" :. (sym "quote" :. sym "a" :. nil) :. nil
 
-  print $ runStateT (eval s1) (M.empty, "")
-  print $ runStateT (eval s2) (M.empty, "")
-  print $ runStateT (eval s3) (M.empty, "")
-  print $ runStateT (eval s4) (M.empty, "")
+  print $ runStateT (eval s1) (M.empty, D.fromList "")
+  print $ runStateT (eval s2) (M.empty, D.fromList "")
+  print $ runStateT (eval s3) (M.empty, D.fromList "")
+  print $ runStateT (eval s4) (M.empty, D.fromList "")
 
 
 test5_pair = do
@@ -388,10 +398,10 @@ test5_pair = do
     s2 = sym "pair?" :. quote (sym "a" :. nil) :. nil
 
 
-  print $ runStateT (eval s1) (M.empty, "")
-  print $ runStateT (eval s2) (M.empty, "")
-  -- print $ runStateT (eval s3) (M.empty, "")
-  -- print $ runStateT (eval s4) (M.empty, "")
+  print $ runStateT (eval s1) (M.empty, D.fromList "")
+  print $ runStateT (eval s2) (M.empty, D.fromList "")
+  -- print $ runStateT (eval s3) (M.empty, D.fromList "")
+  -- print $ runStateT (eval s4) (M.empty, D.fromList "")
 
 main :: IO ()
 main = test3_eval

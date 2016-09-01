@@ -4,6 +4,7 @@ module SchemeParser(
 
 import           Control.Monad.State
 import           Data.Char
+import qualified Data.DList          as D
 import qualified Data.Map            as M
 import           Data.String.Utils
 import           Scheme
@@ -25,13 +26,14 @@ sint :: Parsec String u SExp
 sint = do
   spaces
   intStr <- many1 digit
+  spaces
   return . int . read $ intStr
 
 -- シンボル
 ssym :: Parsec String u SExp
 ssym = do
   spaces
-  symStr <- many1 (satisfy (\x -> isLetter x || x `elem` "+*?")) -- TODO 識別子でどの文字まで許されるか知る必要がある（+*?は利用可能）
+  symStr <- many1 (satisfy (\x -> isLetter x || x `elem` "+*?-")) -- TODO 識別子でどの文字まで許されるか知る必要がある（+*?は利用可能）
   return . sym $ symStr
 
 -- 文字列
@@ -50,6 +52,7 @@ slist = do
   ss <- sexp `sepBy` spaces
   spaces
   char ')'
+  spaces
   return $ foldr (:.) nil ss
 
 -- quote (')
@@ -84,26 +87,38 @@ test1 = do
   parseTest sexp "(define a (car '(1 2 3)))"
   parseTest sexp "(display \"hello, world\n\")"
 
+test2 = do
+  parseTest sexp "(10)"
+  parseTest sexp "( 10)"
+  parseTest sexp "( 10 ) "
+  parseTest sexp "(1 2 3  ) "
+  parseTest sexp "(1 2 3   (   ) ) "
+  parseTest sexp "(ln (fib 2 ) )"
+  parseTest sexp "(+ (fib (- n 2)) (fib (- n 1)))"
+
 
 
 
 main :: IO ()
 main = do
-  sourceCode <- readFile "test.scm"
-  print sourceCode
-  -- let sourceCode2 = "10\n(define x 1)\n(display x)\n(display \"\nhello, world\")"
-  -- putStrLn sourceCode2
-  -- sourceCode <- return "10\n"
-  print sourceCode
-  case parse miniScheme "" sourceCode of
-    Right exps -> do
-      let res = runStateT (forM exps eval) (M.empty, "")
-      case res of
-        Right (evaledExps, (env, stdout)) -> do
-          printf "Evaled Exps: %s\n" (show evaledExps)
-          printf "Env: %s\n" (show env)
-          printf "Stdout: \n%s\n" stdout
-        Left cause                       -> do
-          putStrLn ("failed: " ++ cause)
-    -- パースの失敗
-    Left cause -> print cause
+  test2
+  when False $ do
+    sourceCode <- readFile "test.scm"
+    print sourceCode
+    -- let sourceCode2 = "10\n(define x 1)\n(display x)\n(display \"\nhello, world\")"
+    -- putStrLn sourceCode2
+    -- sourceCode <- return "10\n"
+    print sourceCode
+    case parse miniScheme "" sourceCode of
+      Right exps -> do
+        let res = runStateT (forM exps eval) (M.empty, D.fromList "")
+        case res of
+          Right (evaledExps, (env, stdout)) -> do
+            printf "Evaled Exps: %s\n" (show evaledExps)
+            printf "Env: %s\n" (show env)
+            printf "Stdout: \n\n"
+            putStrLn (D.toList stdout)
+          Left cause                       -> do
+            putStrLn ("failed: " ++ cause)
+      -- パースの失敗
+      Left cause -> print cause

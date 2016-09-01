@@ -21,4 +21,17 @@
 (ln 10)
 (ln x)
 (ln (+ 1 2 3 4 5))
-(display (car '(1 2 3)))
+(ln (car '(1 2 3)))
+
+(define add (lambda (x y) (+ x y)))
+(ln (add 3 4))
+(define fib (lambda (n)
+  (if (equal? n 0)
+    1
+    (if (equal? n 1)
+      1
+      (+ (fib (- n 2)) (fib (- n 1)))
+    )
+  )
+))
+(ln (fib 20) )
