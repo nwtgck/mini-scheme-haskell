@@ -15,5 +15,10 @@
 (display (id 55))
 (display "\n")
 
+; ln: 改行つきdisplay
+(define ln (lambda (x) (display x) (display "\n")))
 
-(display x)
+(ln 10)
+(ln x)
+(ln (+ 1 2 3 4 5))
+(display (car '(1 2 3)))

@@ -14,7 +14,7 @@ miniScheme = many (sexp <* spaces)
 
 -- S式
 sexp :: Parsec String u SExp
-sexp = sint <|> ssym <|> sstr <|> squote <|> slist
+sexp = sint <|> ssym <|> sstr <|> squote <|> slist <|> scomment
 
 -- 整数
 sint :: Parsec String u SExp
@@ -55,6 +55,15 @@ squote = do
   char '\''
   x <- sexp
   return . quote $ x
+
+-- コメント
+scomment :: Parsec String u SExp
+scomment = do
+  spaces
+  char ';'
+  many (noneOf "\n")
+  char '\n'
+  return $ Atm UNDEF
 
 
 test1 = do

@@ -18,6 +18,7 @@ module Scheme(
 
 import           Control.Monad.State
 import qualified Data.Map            as M
+import           Debug.Trace
 import           Text.Printf
 import           Unsafe.Coerce
 
@@ -114,6 +115,7 @@ eval(Atm (SYM "f")) = return $ Atm F
 eval(Atm (SYM "()")) = return $ Atm NIL
 
 
+
 -- シンボルの時は変数の取得
 eval(Atm (SYM xname)) = StateT (\(env, stdout) ->
     case M.lookup xname env of
@@ -167,8 +169,8 @@ eval(Atm (SYM "display") :. ex :. Atm NIL) = do
   return $ Atm UNDEF
 
 -- lambda
-eval(Atm (SYM "lambda") :. params :. content :. Atm NIL) = do
-  return $ Atm (Lam params content) -- paramsがSYMだけで構成されているかはここでは確かめない
+eval(Atm (SYM "lambda") :. params :. contents) = do
+  return $ Atm (Lam params contents) -- paramsがSYMだけで構成されているかはここでは確かめない
 
 -- quote
 eval(Atm (SYM "quote") :. list :. Atm NIL) = return list
@@ -219,12 +221,16 @@ eval(sym@(Atm (SYM lname)) :. args) = do
   (Atm (Lam params content)) <- eval sym -- TODO ラムダでない時にエラーをだすべき
   -- 引数に値をいれる
   pushParamsEnv params args
-  e <- eval content
+  e <- evals content
   -- 引数を環境から除く
   popParamsEnv params
   return e
 
   where
+    evals (x :. Atm NIL) = eval x
+    evals (x :. xs) = eval x >> evals xs
+    evals xs = trace (show xs) undefined
+
     -- 引数をEnvに入れる
     pushParamsEnv (Atm NIL) (Atm NIL)             = return (Atm UNDEF)
     pushParamsEnv ((Atm (SYM p)) :. ps) (a :. as) = do
