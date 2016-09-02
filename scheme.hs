@@ -5,6 +5,8 @@ module Scheme(
   Number(..),
   Atom(..),
   SExp(..),
+  Env,
+  Stdout,
   eval,
   int,
   real,
@@ -17,11 +19,13 @@ module Scheme(
 ) where
 
 import           Control.Monad.State
-import qualified Data.DList          as D
-import qualified Data.Map            as M
+import           Control.Monad.Trans.Either
+import qualified Data.DList                 as D
+import qualified Data.Map                   as M
 import           Debug.Trace
 import           Text.Printf
 import           Unsafe.Coerce
+
 
 data Number = INT Integer | REAL Double deriving Eq
 data Atom   = NUM Number | SYM String | STR String | Lam SExp SExp | T | F | UNDEF | NIL deriving (Eq) -- Lam（ラムダ）は最初が引数で残りが実装
@@ -109,7 +113,7 @@ type Env = M.Map String [SExp]
 type Stdout = D.DList Char
 
 
-eval :: SExp -> StateT (Env, Stdout) (Either String) SExp
+eval :: Monad m => SExp -> StateT (Env, Stdout) (EitherT String m) SExp
 
 eval(Atm (SYM "t")) = return $ Atm T
 eval(Atm (SYM "f")) = return $ Atm F
@@ -120,8 +124,8 @@ eval(Atm (SYM "()")) = return $ Atm NIL
 -- シンボルの時は変数の取得
 eval(Atm (SYM xname)) = StateT (\(env, stdout) ->
     case M.lookup xname env of
-      Just ex -> Right(head ex, (env, stdout))
-      Nothing -> Left ('\'': xname ++ "' not found")
+      Just ex -> right (head ex, (env, stdout))
+      Nothing -> left ('\'': xname ++ "' not found")
   )
 -- Sym以外のアトムのときはそのまま
 eval a@(Atm _) = return a
@@ -157,10 +161,12 @@ eval (op@(Atm (SYM "list")) :. x :. xs) = do
 
 -- define
 eval(Atm (SYM "define") :. xsym@(Atm (SYM xname)) :. xs :. Atm NIL) = StateT (\env ->
+  do
     let s = runStateT (eval xs) env
-    in case s of
-      Right (x, (newEnv, stdout)) -> Right (xsym, (M.insertWith (++) xname [x] newEnv, stdout))
-      _                 -> s
+    r <- runEitherT s
+    case r of
+        Right (x, (newEnv, stdout)) -> right (xsym, (M.insertWith (++) xname [x] newEnv, stdout))
+        Left f                 -> left f
   )
 -- if
 eval(Atm (SYM "if") :. cond :. te :. fe :. Atm NIL) = do
@@ -250,7 +256,7 @@ eval(sym@(Atm (SYM lname)) :. args) = do
       pushParamsEnv ps as
 
     -- 引数をEnvから外す
-    popParamsEnv :: SExp -> StateT (Env, Stdout) (Either String) SExp
+    popParamsEnv :: Monad m => SExp -> StateT (Env, Stdout) (EitherT String m) SExp
     popParamsEnv (Atm NIL)             = return (Atm UNDEF)
     popParamsEnv (Atm (SYM p) :. ps) = do
       (env, stdout) <- get
@@ -259,7 +265,7 @@ eval(sym@(Atm (SYM lname)) :. args) = do
       popParamsEnv ps
 
 ---- END OF EVAL
-eval ex = StateT (\_ -> Left (show ex ++ " not evaled"))
+eval ex = StateT (\_ -> left (show ex ++ " not evaled"))
 
 -- 'ex
 quote ex = sym "quote" :. ex :. nil
@@ -297,19 +303,18 @@ test2_eval = do
     -- (list 1 2 3)
     s12 = (sym "list" :. int 1 :. int 2 :. int 3 :. nil)
 
-
-  print $ runStateT (eval s1) (M.empty, D.fromList "")
-  print $ runStateT (eval s2) (M.empty, D.fromList "")
-  print $ runStateT (eval s3) (M.empty, D.fromList "")
-  print $ runStateT (eval s4) (M.empty, D.fromList "")
-  print $ runStateT (eval s5) (M.empty, D.fromList "")
-  print $ runStateT (eval s6) (M.empty, D.fromList "")
-  print $ runStateT (eval s7) (M.empty, D.fromList "")
-  print $ runStateT (eval s8) (M.empty, D.fromList "")
-  print $ runStateT (eval s9) (M.empty, D.fromList "") -- これは失敗すべき
-  print $ runStateT (eval s10) (M.empty, D.fromList "")
-  print $ runStateT (eval s11) (M.empty, D.fromList "")
-  print $ runStateT (eval s12) (M.empty, D.fromList "")
+  print =<< runEitherT (runStateT (eval s1) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s2) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s3) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s4) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s5) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s6) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s7) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s8) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s9) (M.empty, D.fromList "")) -- これは失敗すべき
+  print =<< runEitherT (runStateT (eval s10) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s11) (M.empty, D.fromList ""))
+  print =<< runEitherT (runStateT (eval s12) (M.empty, D.fromList ""))
 
 
 
@@ -363,13 +368,22 @@ test3_eval = do
 
   mapM print program
 
+  let f :: SExp -> StateT (Env, Stdout) (EitherT String IO) SExp
+      f sexp = do
+        evaled <- eval sexp
+
+        (env, stdout) <- get
+        liftIO $ putStr (D.toList stdout)
+        put (env, D.fromList "")
+        return evaled
   -- programの実行
-  let res = runStateT (forM program eval) (M.empty, D.fromList "")
+  res <- runEitherT (runStateT (forM program f) (M.empty, D.fromList ""))
+
   case res of
     Right (evaledExps, (env, stdout)) -> do
       printf "Evaled Exps: %s\n" (show evaledExps)
       printf "Env: %s\n" (show env)
-      printf "Stdout: \n%s\n" (D.toList stdout)
+      printf "Stdout: \n%s\n" (D.toList stdout) -- 空の文字列になるべき
     Left cause                       -> do
       putStrLn ("failed: " ++ cause)
   return ()
@@ -386,10 +400,10 @@ test4_null = do
     -- (null? 'a)
     s4 = sym "null?" :. (sym "quote" :. sym "a" :. nil) :. nil
 
-  print $ runStateT (eval s1) (M.empty, D.fromList "")
-  print $ runStateT (eval s2) (M.empty, D.fromList "")
-  print $ runStateT (eval s3) (M.empty, D.fromList "")
-  print $ runStateT (eval s4) (M.empty, D.fromList "")
+  print =<< runEitherT ( runStateT (eval s1) (M.empty, D.fromList "") )
+  print =<< runEitherT ( runStateT (eval s2) (M.empty, D.fromList "") )
+  print =<< runEitherT ( runStateT (eval s3) (M.empty, D.fromList "") )
+  print =<< runEitherT ( runStateT (eval s4) (M.empty, D.fromList "") )
 
 
 test5_pair = do
@@ -398,8 +412,8 @@ test5_pair = do
     s2 = sym "pair?" :. quote (sym "a" :. nil) :. nil
 
 
-  print $ runStateT (eval s1) (M.empty, D.fromList "")
-  print $ runStateT (eval s2) (M.empty, D.fromList "")
+  print =<< runEitherT ( runStateT (eval s1) (M.empty, D.fromList "") )
+  print =<< runEitherT ( runStateT (eval s2) (M.empty, D.fromList "") )
   -- print $ runStateT (eval s3) (M.empty, D.fromList "")
   -- print $ runStateT (eval s4) (M.empty, D.fromList "")
 

@@ -35,3 +35,7 @@
   )
 ))
 (ln (fib 20) )
+(ln (fib 21) )
+(ln (fib 22) )
+(ln (fib 23) )
+(ln (fib 24) )

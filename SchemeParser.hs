@@ -102,23 +102,23 @@ test2 = do
 main :: IO ()
 main = do
   test2
-  when False $ do
-    sourceCode <- readFile "test.scm"
-    print sourceCode
-    -- let sourceCode2 = "10\n(define x 1)\n(display x)\n(display \"\nhello, world\")"
-    -- putStrLn sourceCode2
-    -- sourceCode <- return "10\n"
-    print sourceCode
-    case parse miniScheme "" sourceCode of
-      Right exps -> do
-        let res = runStateT (forM exps eval) (M.empty, D.fromList "")
-        case res of
-          Right (evaledExps, (env, stdout)) -> do
-            printf "Evaled Exps: %s\n" (show evaledExps)
-            printf "Env: %s\n" (show env)
-            printf "Stdout: \n\n"
-            putStrLn (D.toList stdout)
-          Left cause                       -> do
-            putStrLn ("failed: " ++ cause)
-      -- パースの失敗
-      Left cause -> print cause
+  -- when False $ do
+  --   sourceCode <- readFile "test.scm"
+  --   print sourceCode
+  --   -- let sourceCode2 = "10\n(define x 1)\n(display x)\n(display \"\nhello, world\")"
+  --   -- putStrLn sourceCode2
+  --   -- sourceCode <- return "10\n"
+  --   print sourceCode
+  --   case parse miniScheme "" sourceCode of
+  --     Right exps -> do
+  --       let res = runStateT (forM exps eval) (M.empty, D.fromList "")
+  --       case res of
+  --         Right (evaledExps, (env, stdout)) -> do
+  --           printf "Evaled Exps: %s\n" (show evaledExps)
+  --           printf "Env: %s\n" (show env)
+  --           printf "Stdout: \n\n"
+  --           putStrLn (D.toList stdout)
+  --         Left cause                       -> do
+  --           putStrLn ("failed: " ++ cause)
+  --     -- パースの失敗
+  --     Left cause -> print cause
