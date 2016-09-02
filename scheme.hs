@@ -24,7 +24,6 @@ import qualified Data.DList                 as D
 import qualified Data.Map                   as M
 import           Debug.Trace
 import           Text.Printf
-import           Unsafe.Coerce
 
 
 data Number = INT Integer | REAL Double deriving Eq
