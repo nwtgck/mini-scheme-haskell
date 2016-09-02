@@ -64,8 +64,8 @@ instance Show Atom where
   show(SYM s)  = s
   show(STR s)  = show s
   show (Lam ps content) = "(lambda " ++ show ps ++ " " ++ show content ++ ")"
-  show T       = "t"
-  show F       = "f"
+  show T       = "#t"
+  show F       = "#f"
   show NIL     = "()"
   show UNDEF   = "<undef>"
 
@@ -78,7 +78,7 @@ instance Show SExp where
       showLis (car :. cdr) =
         show car ++ case cdr of
                      Atm NIL   -> ""
-                     Atm a     -> "." ++ show a
+                     Atm a     -> " . " ++ show a
                      _            -> " " ++ showLis cdr
 
 -- シンボルの作成がし易いように
@@ -114,8 +114,8 @@ type Stdout = D.DList Char
 
 eval :: Monad m => SExp -> StateT (Env, Stdout) (EitherT String m) SExp
 
-eval(Atm (SYM "t")) = return $ Atm T
-eval(Atm (SYM "f")) = return $ Atm F
+eval(Atm (SYM "#t")) = return $ Atm T
+eval(Atm (SYM "#f")) = return $ Atm F
 eval(Atm (SYM "()")) = return $ Atm NIL
 
 
@@ -244,7 +244,6 @@ eval(sym@(Atm (SYM lname)) :. args) = do
   where
     evals (x :. Atm NIL) = eval x
     evals (x :. xs) = eval x >> evals xs
-    evals xs = trace (show xs) undefined
 
     -- 引数をEnvに入れる
     pushParamsEnv (Atm NIL) (Atm NIL)             = return (Atm UNDEF)

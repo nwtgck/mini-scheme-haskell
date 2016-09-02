@@ -33,7 +33,7 @@ sint = do
 ssym :: Parsec String u SExp
 ssym = do
   spaces
-  symStr <- many1 (satisfy (\x -> isLetter x || x `elem` "+*?-")) -- TODO 識別子でどの文字まで許されるか知る必要がある（+*?は利用可能）
+  symStr <- many1 (satisfy (\x -> isLetter x || x `elem` "+*?-#")) -- TODO 識別子でどの文字まで許されるか知る必要がある（+*?は利用可能）
   return . sym $ symStr
 
 -- 文字列

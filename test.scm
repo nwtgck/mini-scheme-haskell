@@ -15,16 +15,16 @@
 (display (id 55))
 (display "\n")
 
-; ln: 改行つきdisplay
-(define ln (lambda (x) (display x) (display "\n")))
+; print: 改行つきdisplay
+(define print (lambda (x) (display x) (display "\n")))
 
-(ln 10)
-(ln x)
-(ln (+ 1 2 3 4 5))
-(ln (car '(1 2 3)))
+(print 10)
+(print x)
+(print (+ 1 2 3 4 5))
+(print (car '(1 2 3)))
 
 (define add (lambda (x y) (+ x y)))
-(ln (add 3 4))
+(print (add 3 4))
 (define fib (lambda (n)
   (if (equal? n 0)
     1
@@ -34,8 +34,10 @@
     )
   )
 ))
-(ln (fib 20) )
-(ln (fib 21) )
-(ln (fib 22) )
-(ln (fib 23) )
-(ln (fib 24) )
+(print (fib 20) )
+(print (fib 21) )
+(print (fib 22) )
+(print (fib 23) )
+(print (fib 24) )
+(print (cons 1 (cons 2 3)))
+(print #t)
