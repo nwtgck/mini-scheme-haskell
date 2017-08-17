@@ -1,9 +1,9 @@
-Mini Scheme Interpreter by Haskell
+Mini Scheme Interpreter in Haskell
 ==
 
 # What is this
 
-Mini Scheme Interpreter created by Haskell
+Mini Scheme Interpreter written in Haskell
 
 # How to use
 
